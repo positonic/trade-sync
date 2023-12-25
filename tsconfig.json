@@ -1,0 +1,47 @@
+{
+    "compilerOptions": {
+        /* Basic Options */
+        "target": "es6",                                 // Specify ECMAScript target version
+        "module": "CommonJS",                                // Specify module code generation
+        "lib": ["es6", "dom"],                           // Specify library files to be included in the compilation
+        "outDir": "./dist",                              // Redirect output structure to the directory
+        "rootDir": "./",                                 // Specify the root directory of input files
+        "strict": true,                                  // Enable all strict type-checking options
+        "esModuleInterop": true,                         // Enables compatibility with Babel/ES6 module imports
+        "skipLibCheck": true,                            // Skip type checking of declaration files
+        "resolveJsonModule": true,
+        
+        /* Strict Type-Checking Options */
+        "strictNullChecks": true,                        // Enable strict null checks
+        "strictFunctionTypes": true,                     // Enable strict checking of function types
+        "strictPropertyInitialization": true,            // Enable strict checking of property initialization in classes
+        "noImplicitThis": true,                          // Raise error on 'this' expressions with an implied 'any' type
+        "alwaysStrict": true,                            // Parse in strict mode and emit "use strict" for each source file
+
+        /* Additional Checks */
+        "noUnusedLocals": true,                          // Report errors on unused locals
+        "noUnusedParameters": true,                      // Report errors on unused parameters
+        "noImplicitReturns": true,                       // Report error when not all code paths in function return a value
+        "noFallthroughCasesInSwitch": true,              // Report errors for fallthrough cases in switch statement
+
+        /* Module Resolution Options */
+        "moduleResolution": "node",                      // Choose the module resolution strategy: 'node' or 'classic'
+        "baseUrl": "./",                                 // Base directory to resolve non-relative module names
+        "paths": {},                                     // A series of entries which re-map imports to lookup locations relative to the 'baseUrl'
+        
+        /* Source Map Options */
+        "sourceMap": true,                               // Generates corresponding '.map' file
+
+        /* Experimental Options */
+        "experimentalDecorators": true,                  // Enables experimental support for ES7 decorators
+        "emitDecoratorMetadata": true                    // Enables experimental support for emitting type metadata for decorators
+    },
+    "include": [
+        "**/*"                                           // Include all files in the project root
+    ],
+    "exclude": [
+        "node_modules",                                  // Exclude the node_modules directory
+        "**/*.spec.ts",                                  // Exclude test files
+        "dist"                                           // Exclude the output directory
+    ]
+}
