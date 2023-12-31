@@ -92,3 +92,6 @@ public
 
 # DynamoDB Local files
 .dynamodb/
+
+# Sample data
+exchanges/sampleResponses
