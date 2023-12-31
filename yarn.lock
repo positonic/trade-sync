@@ -106,6 +106,13 @@ axios@^1.6.2:
     form-data "^4.0.0"
     proxy-from-env "^1.1.0"
 
+ccxt@^4.2.2:
+  version "4.2.2"
+  resolved "https://registry.yarnpkg.com/ccxt/-/ccxt-4.2.2.tgz#ea8c5400e3df2d05c8e3d12eff3b350692195f86"
+  integrity sha512-QSs4PFuvjQmRLfmKAFGqFa0gD5SV41B8Z3CrZcg0X1BAt+HpWMd4T2ceKn6DPnvx9vnQuzpbE4nET2rhDjHTPQ==
+  dependencies:
+    ws "^8.8.1"
+
 chalk@2:
   version "2.4.2"
   resolved "https://registry.yarnpkg.com/chalk/-/chalk-2.4.2.tgz#cd42541677a54333cf541a49108c1432b44c9424"
@@ -265,6 +272,11 @@ whatwg-url@^5.0.0:
   dependencies:
     tr46 "~0.0.3"
     webidl-conversions "^3.0.0"
+
+ws@^8.8.1:
+  version "8.15.1"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-8.15.1.tgz#271ba33a45ca0cc477940f7f200cd7fba7ee1997"
+  integrity sha512-W5OZiCjXEmk0yZ66ZN82beM5Sz7l7coYxpRkzS+p9PP+ToQry8szKh+61eNktr7EA9DOwvFGhfC605jDHbP6QQ==
 
 yn@3.1.1:
   version "3.1.1"

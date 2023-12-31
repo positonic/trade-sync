@@ -2,6 +2,7 @@
   "dependencies": {
     "@notionhq/client": "^2.2.14",
     "axios": "^1.6.2",
+    "ccxt": "^4.2.2",
     "chalk": "2",
     "dotenv": "^16.3.1",
     "ts-node": "^10.9.1"
