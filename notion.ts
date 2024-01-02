@@ -40,43 +40,48 @@ export async function insertBalanceToNotion(
   balance: Balance,
   exchange: string
 ) {
+  console.log("exchange", exchange);
+  console.log("balance", exchange);
   // Loop through each currency in the balance and create pages or update the database as necessary
   for (const [currency, data] of Object.entries(balance.total ?? {}).filter(
     ([_, value]) => value !== undefined
   )) {
-    await notion.pages.create({
-      parent: { database_id: balancesDatabaseId },
-      properties: {
-        Currency: {
-          title: [
-            {
-              text: {
-                content: exchange + " " + currency,
+    const free = (balance.free as unknown as { [key: string]: number })[
+      currency
+    ];
+    const used = (balance.used as unknown as { [key: string]: number })[
+      currency
+    ];
+    if (free > 0 || used > 0 || data > 0)
+      await notion.pages.create({
+        parent: { database_id: balancesDatabaseId },
+        properties: {
+          Currency: {
+            title: [
+              {
+                text: {
+                  content: exchange + " " + currency,
+                },
               },
-            },
-          ],
+            ],
+          },
+          Free: {
+            number: free || 0,
+          },
+          Used: {
+            number: used || 0,
+          },
+          Total: {
+            number: data || 0,
+          },
+          Exchange: {
+            select: { name: exchange }, // Assuming 'type' is either 'buy' or 'sell'
+          },
+          Coin: {
+            rich_text: [{ text: { content: currency } }], // Assuming 'type' is either 'buy' or 'sell'
+          },
         },
-        Free: {
-          number:
-            (balance.free as unknown as { [key: string]: number })[currency] ||
-            0,
-        },
-        Used: {
-          number:
-            (balance.used as unknown as { [key: string]: number })[currency] ||
-            0,
-        },
-        Total: {
-          number: data || 0,
-        },
-        Exchange: {
-          select: { name: exchange }, // Assuming 'type' is either 'buy' or 'sell'
-        },
-        Coin: {
-          rich_text: [{ text: { content: currency } }], // Assuming 'type' is either 'buy' or 'sell'
-        },
-      },
-    });
+      });
   }
 }
 
