@@ -16,7 +16,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v1
         with:
-          node-version: "14" # Set this to the node version you need
+          node-version: "19" # Set this to the node version you need
+          cache: "yarn"
 
       - name: Install Yarn
         run: npm install -g yarn
