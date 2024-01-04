@@ -37,11 +37,27 @@ async function checkIfTradeExists(tradeID: string): Promise<boolean> {
     return false;
   }
 }
+
+async function checkIfBalanceExists(exchangeMarket: string) {
+  const response = await notion.databases.query({
+    database_id: balancesDatabaseId,
+    filter: {
+      property: "ExchangeMarket",
+      title: {
+        equals: exchangeMarket,
+      },
+    },
+  });
+
+  return response.results.length > 0 ? response.results[0] : null;
+}
 // Define a function to insert data into Notion database
-export async function insertBalanceToNotion(
+export async function insertOrUpdateBalanceToNotion(
   balance: Balance,
-  exchange: string
+  exchange: string,
+  exchangeMarket: string
 ) {
+  const existingBalance = await checkIfBalanceExists(exchangeMarket);
   const usdValueTime = new Date();
 
   // Loop through each currency in the balance and create pages or update the database as necessary
@@ -56,47 +72,57 @@ export async function insertBalanceToNotion(
     ];
     const usdValue = balance.usdValue ? balance.usdValue[currency] || 0 : 0;
 
-    if (free > 0 || used > 0 || data > 0)
-      await notion.pages.create({
-        parent: { database_id: balancesDatabaseId },
-        properties: {
-          Currency: {
-            title: [
-              {
-                text: {
-                  content: exchange + " " + currency,
-                },
+    if (free > 0 || used > 0 || data > 0) {
+      const balanceProperties = {
+        ExchangeMarket: {
+          title: [
+            {
+              text: {
+                content: exchangeMarket,
               },
-            ],
-          },
-          Free: {
-            number: free || 0,
-          },
-          Used: {
-            number: used || 0,
-          },
-          Total: {
-            number: data || 0,
-          },
-          Exchange: {
-            select: { name: exchange }, // Assuming 'type' is either 'buy' or 'sell'
-          },
-          Coin: {
-            rich_text: [{ text: { content: currency } }], // Assuming 'type' is either 'buy' or 'sell'
-          },
-          USDValue: {
-            number: usdValue,
-          },
-          USDPrice: {
-            number: usdValue / data || 0, // Assuming this is what you mean by usdPrice
-          },
-          USDValueTime: {
-            date: {
-              start: usdValueTime.toISOString(),
             },
+          ],
+        },
+        Free: {
+          number: free || 0,
+        },
+        Used: {
+          number: used || 0,
+        },
+        Total: {
+          number: data || 0,
+        },
+        Exchange: {
+          select: { name: exchange }, // Assuming 'type' is either 'buy' or 'sell'
+        },
+        Coin: {
+          rich_text: [{ text: { content: currency } }], // Assuming 'type' is either 'buy' or 'sell'
+        },
+        USDValue: {
+          number: usdValue,
+        },
+        USDPrice: {
+          number: usdValue / data || 0, // Assuming this is what you mean by usdPrice
+        },
+        USDValueTime: {
+          date: {
+            start: usdValueTime.toISOString(),
           },
         },
-      });
+      };
+      if (existingBalance) {
+        // Update the existing balance
+        await notion.pages.update({
+          page_id: existingBalance.id,
+          properties: balanceProperties,
+        });
+      } else {
+        await notion.pages.create({
+          parent: { database_id: balancesDatabaseId },
+          properties: balanceProperties,
+        });
+      }
+    }
   }
 }
 

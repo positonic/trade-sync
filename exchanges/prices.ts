@@ -1,10 +1,16 @@
 import { Balance } from "interfaces/Balance";
+import Exchange from "interfaces/Exchange";
 
 export async function calculateUsdValues(
-  exchange: any,
+  exchange: Exchange,
   balance: Balance
-): Promise<{ balance: Balance; totalUsdValue: number }> {
-  const markets = await exchange.loadMarkets();
+): Promise<{
+  balance: Balance;
+  totalUsdValue: number;
+  exchangeMarket: string;
+}> {
+  const markets = await exchange.instance.loadMarkets();
+  let exchangeMarket = "";
   let totalUsdValue = 0; // Initialize total USD value
 
   balance.usdValue = {}; // Initialize usdValue
@@ -18,11 +24,12 @@ export async function calculateUsdValues(
     if (totalAmount <= 0) continue;
 
     const marketSymbol = `${currency}/USD`;
+    exchangeMarket = `${exchange.name}-${currency}`;
     const marketExists = marketSymbol in markets;
 
     if (marketExists) {
       try {
-        const ticker = await exchange.fetchTicker(marketSymbol);
+        const ticker = await exchange.instance.fetchTicker(marketSymbol);
         const currencyValue = totalAmount * ticker.last; // Calculate USD value
         balance.usdValue[currency] = currencyValue; // Assign USD value
         totalUsdValue += currencyValue; // Add to total
@@ -32,5 +39,5 @@ export async function calculateUsdValues(
     }
   }
 
-  return { balance, totalUsdValue }; // Return the modified balance and total USD value
+  return { balance, totalUsdValue, exchangeMarket }; // Return the modified balance and total USD value
 }

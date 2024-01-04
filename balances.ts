@@ -1,7 +1,11 @@
 import ccxt from "ccxt";
 import dotenv from "dotenv";
-import { insertBalanceToNotion, savePortfolioValueToNotion } from "./notion";
+import {
+  insertOrUpdateBalanceToNotion,
+  savePortfolioValueToNotion,
+} from "./notion";
 import { calculateUsdValues } from "./exchanges/prices";
+import Exchange from "interfaces/Exchange";
 
 // Configure dotenv to load the .env file
 dotenv.config();
@@ -34,7 +38,7 @@ async function main() {
   });
 
   // Define an array of exchanges with their respective names and instances
-  const exchanges = [
+  const exchanges: Exchange[] = [
     { name: "Kraken", instance: kraken },
     { name: "Bybit", instance: bybit },
     { name: "Binance", instance: binance },
@@ -48,14 +52,21 @@ async function main() {
       const balance = await fetchBalances(exchange.instance);
 
       // Calculate USD values for the fetched balances
-      const { balance: updatedBalance, totalUsdValue } =
-        await calculateUsdValues(exchange.instance, balance);
+      const {
+        balance: updatedBalance,
+        totalUsdValue,
+        exchangeMarket,
+      } = await calculateUsdValues(exchange, balance);
 
       // Accumulate the total USD value from all exchanges
       portfolioTotalUsdValue += totalUsdValue;
 
       // Insert the updated balance and total USD value into Notion
-      await insertBalanceToNotion(updatedBalance, exchange.name);
+      await insertOrUpdateBalanceToNotion(
+        updatedBalance,
+        exchange.name,
+        exchangeMarket
+      );
 
       // Log a success message
       console.log(
