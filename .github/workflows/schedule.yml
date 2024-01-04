@@ -10,16 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     environment: Trade Sync Live
     env:
-      NOTION_TOKEN: ${{ vars.NOTION_TOKEN }}
-      NOTION_TRADES_DATABASE_ID: ${{ vars.NOTION_TRADES_DATABASE_ID }}
-      NOTION_BALANCES_DATABASE_ID: ${{ vars.NOTION_BALANCES_DATABASE_ID }}
-      NOTION_PORTFOLIO_VALUE_DATABASE_ID: ${{ vars.NOTION_PORTFOLIO_VALUE_DATABASE_ID }}
+      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+      NOTION_TRADES_DATABASE_ID: ${{ secrets.NOTION_TRADES_DATABASE_ID }}
+      NOTION_BALANCES_DATABASE_ID: ${{ secrets.NOTION_BALANCES_DATABASE_ID }}
+      NOTION_PORTFOLIO_VALUE_DATABASE_ID: ${{ secrets.NOTION_PORTFOLIO_VALUE_DATABASE_ID }}
       KRAKEN_API_KEY: ${{ secrets.KRAKEN_API_KEY }}
       KRAKEN_API_SECRET: ${{ secrets.KRAKEN_API_SECRET }}
-      BINANCE_API_KEY: ${{ vars.BINANCE_API_KEY }}
-      BINANCE_API_SECRET: ${{ vars.BINANCE_API_SECRET }}
-      BYBIT_API_KEY: ${{ vars.BYBIT_API_KEY }}
-      BYBIT_API_SECRET: ${{ vars.BYBIT_API_SECRET }}
+      BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
+      BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
+      BYBIT_API_KEY: ${{ secrets.BYBIT_API_KEY }}
+      BYBIT_API_SECRET: ${{ secrets.BYBIT_API_SECRET }}
 
     steps:
       - name: Checkout repository
