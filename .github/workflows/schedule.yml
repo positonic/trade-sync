@@ -8,13 +8,14 @@ on:
 jobs:
   update_portfolio:
     runs-on: ubuntu-latest
+    environment: Trade Sync Live
     env:
       NOTION_TOKEN: ${{ vars.NOTION_TOKEN }}
       NOTION_TRADES_DATABASE_ID: ${{ vars.NOTION_TRADES_DATABASE_ID }}
       NOTION_BALANCES_DATABASE_ID: ${{ vars.NOTION_BALANCES_DATABASE_ID }}
       NOTION_PORTFOLIO_VALUE_DATABASE_ID: ${{ vars.NOTION_PORTFOLIO_VALUE_DATABASE_ID }}
-      KRAKEN_API_KEY: ${{ vars.KRAKEN_API_KEY }}
-      KRAKEN_API_SECRET: ${{ vars.KRAKEN_API_SECRET }}
+      KRAKEN_API_KEY: ${{ secrets.KRAKEN_API_KEY }}
+      KRAKEN_API_SECRET: ${{ secrets.KRAKEN_API_SECRET }}
       BINANCE_API_KEY: ${{ vars.BINANCE_API_KEY }}
       BINANCE_API_SECRET: ${{ vars.BINANCE_API_SECRET }}
       BYBIT_API_KEY: ${{ vars.BYBIT_API_KEY }}
