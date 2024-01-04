@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "@notionhq/client": "^2.2.14",
     "axios": "^1.6.2",

@@ -1,0 +1,31 @@
+name: Portfolio Update
+
+on:
+  schedule:
+    # Runs at the top of every hour
+    - cron: "0 * * * *"
+
+jobs:
+  update_portfolio:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: "14" # Set this to the node version you need
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Compile TypeScript
+        run: yarn build
+
+      - name: Run the script
+        run: node dist/balances.js # Adjust the path according to your output directory
