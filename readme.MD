@@ -26,9 +26,17 @@ Portfolio Balance Tracker is a Node.js application designed to fetch and calcula
 
 ### Configuration:
 
-Set up environment variables for API keys and any other sensitive information.
-
-Modify the exchange instances and their API credentials as required.
+Save .env.examples as .env, and add the configuartion variables:
+NOTION_TOKEN=(Notion access Token)
+NOTION_TRADES_DATABASE_ID=(Create the database in Notion)
+NOTION_BALANCES_DATABASE_ID=(Create the database in Notion)
+NOTION_PORTFOLIO_VALUE_DATABASE_ID=(Create the database in Notion)
+KRAKEN_API_KEY=(Exchange view only api keys)
+KRAKEN_API_SECRET=(Exchange view only api keys)
+BINANCE_API_KEY=(Exchange view only api keys)
+BINANCE_API_SECRET=(Exchange view only api keys)
+BYBIT_API_KEY=(Exchange view only api keys)
+BYBIT_API_SECRET=(Exchange view only api keys)
 
 ### Running Locally:
 
