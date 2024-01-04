@@ -33,32 +33,42 @@ async function main() {
     secret: process.env.KRAKEN_API_SECRET, // Loaded from .env
   });
 
-  // Fetch and display balances
-  //await fetchBalances(bybit);
-  // await fetchBalances(binance);
-
-  //const exchangeId: keyof ccxt.ExchangeId = "kraken"; // Example: 'kraken'
+  // Define an array of exchanges with their respective names and instances
+  const exchanges = [
+    { name: "Kraken", instance: kraken },
+    { name: "Bybit", instance: bybit },
+    { name: "Binance", instance: binance },
+  ];
 
   let portfolioTotalUsdValue = 0;
-  const krakenBalance = await fetchBalances(kraken);
-  const { balance: updatedKrakenBalance, totalUsdValue: totalUsdValueKraken } =
-    await calculateUsdValues(kraken, krakenBalance);
-  portfolioTotalUsdValue += totalUsdValueKraken;
-  await insertBalanceToNotion(updatedKrakenBalance, "Kraken");
 
-  const bybitBalance = await fetchBalances(bybit);
-  const { balance: updatedBybitBalance, totalUsdValue: totalUsdValueBybit } =
-    await calculateUsdValues(bybit, bybitBalance);
-  portfolioTotalUsdValue += totalUsdValueBybit;
-  await insertBalanceToNotion(updatedBybitBalance, "Bybit");
+  for (const exchange of exchanges) {
+    try {
+      // Fetch balances for each exchange
+      const balance = await fetchBalances(exchange.instance);
 
-  const binanceBalance = await fetchBalances(binance);
-  const {
-    balance: updatedBinanceBalance,
-    totalUsdValue: totalUsdValueBinance,
-  } = await calculateUsdValues(binance, binanceBalance);
-  portfolioTotalUsdValue += totalUsdValueBinance;
-  await insertBalanceToNotion(updatedBinanceBalance, "Binance");
+      // Calculate USD values for the fetched balances
+      const { balance: updatedBalance, totalUsdValue } =
+        await calculateUsdValues(exchange.instance, balance);
+
+      // Accumulate the total USD value from all exchanges
+      portfolioTotalUsdValue += totalUsdValue;
+
+      // Insert the updated balance and total USD value into Notion
+      await insertBalanceToNotion(updatedBalance, exchange.name);
+
+      // Log a success message
+      console.log(
+        `${exchange.name} exchange processed successfully. Total USD Value: ${totalUsdValue}`
+      );
+    } catch (error) {
+      // Log the error for the specific exchange
+      console.error(`Error processing ${exchange.name} exchange:`, error);
+    }
+  }
+
+  // After the loop, portfolioTotalUsdValue contains the total value from all exchanges
+  console.log("Total Portfolio Value in USD:", portfolioTotalUsdValue);
 
   savePortfolioValueToNotion(portfolioTotalUsdValue);
 }
