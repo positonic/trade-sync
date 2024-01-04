@@ -2,7 +2,7 @@ import { Client } from "@notionhq/client";
 import chalk from "chalk";
 import { getKrakenFromFromPairString } from "./exchanges/Kraken";
 import { Trade } from "interfaces/Trade";
-import { Balance } from "ccxt";
+import { Balance } from "./interfaces/Balance";
 import dotenv from "dotenv";
 // Configure dotenv to load the .env file
 dotenv.config();
@@ -11,6 +11,8 @@ dotenv.config();
 const notionToken = process.env.NOTION_TOKEN as string;
 const tradesDatabaseId = process.env.NOTION_TRADES_DATABASE_ID as string;
 const balancesDatabaseId = process.env.NOTION_BALANCES_DATABASE_ID as string;
+const portfolioValueDatabaseId = process.env
+  .NOTION_PORTFOLIO_VALUE_DATABASE_ID as string;
 
 // Initialize Notion client
 const notion = new Client({ auth: notionToken });
@@ -40,8 +42,8 @@ export async function insertBalanceToNotion(
   balance: Balance,
   exchange: string
 ) {
-  console.log("exchange", exchange);
-  console.log("balance", exchange);
+  const usdValueTime = new Date();
+
   // Loop through each currency in the balance and create pages or update the database as necessary
   for (const [currency, data] of Object.entries(balance.total ?? {}).filter(
     ([_, value]) => value !== undefined
@@ -52,6 +54,8 @@ export async function insertBalanceToNotion(
     const used = (balance.used as unknown as { [key: string]: number })[
       currency
     ];
+    const usdValue = balance.usdValue ? balance.usdValue[currency] || 0 : 0;
+
     if (free > 0 || used > 0 || data > 0)
       await notion.pages.create({
         parent: { database_id: balancesDatabaseId },
@@ -79,6 +83,17 @@ export async function insertBalanceToNotion(
           },
           Coin: {
             rich_text: [{ text: { content: currency } }], // Assuming 'type' is either 'buy' or 'sell'
+          },
+          USDValue: {
+            number: usdValue,
+          },
+          USDPrice: {
+            number: usdValue / data || 0, // Assuming this is what you mean by usdPrice
+          },
+          USDValueTime: {
+            date: {
+              start: usdValueTime.toISOString(),
+            },
           },
         },
       });
@@ -200,4 +215,26 @@ export async function insertTradesToNotion(trades: Record<string, Trade>) {
     }
     // process.exit()
   }
+}
+export async function savePortfolioValueToNotion(value: number) {
+  const currentDate = new Date().toISOString();
+
+  await notion.pages.create({
+    parent: { database_id: portfolioValueDatabaseId },
+    properties: {
+      Name: {
+        title: [
+          {
+            text: { content: "Total Portfolio Value" },
+          },
+        ],
+      },
+      Value: {
+        number: value,
+      },
+      Date: {
+        date: { start: currentDate },
+      },
+    },
+  });
 }

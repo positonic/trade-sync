@@ -1,6 +1,7 @@
 import ccxt from "ccxt";
 import dotenv from "dotenv";
-import { insertBalanceToNotion } from "./notion";
+import { insertBalanceToNotion, savePortfolioValueToNotion } from "./notion";
+import { calculateUsdValues } from "./exchanges/prices";
 
 // Configure dotenv to load the .env file
 dotenv.config();
@@ -38,14 +39,28 @@ async function main() {
 
   //const exchangeId: keyof ccxt.ExchangeId = "kraken"; // Example: 'kraken'
 
+  let portfolioTotalUsdValue = 0;
   const krakenBalance = await fetchBalances(kraken);
-  await insertBalanceToNotion(krakenBalance, "Kraken");
+  const { balance: updatedKrakenBalance, totalUsdValue: totalUsdValueKraken } =
+    await calculateUsdValues(kraken, krakenBalance);
+  portfolioTotalUsdValue += totalUsdValueKraken;
+  await insertBalanceToNotion(updatedKrakenBalance, "Kraken");
 
   const bybitBalance = await fetchBalances(bybit);
-  await insertBalanceToNotion(bybitBalance, "Bybit");
+  const { balance: updatedBybitBalance, totalUsdValue: totalUsdValueBybit } =
+    await calculateUsdValues(bybit, bybitBalance);
+  portfolioTotalUsdValue += totalUsdValueBybit;
+  await insertBalanceToNotion(updatedBybitBalance, "Bybit");
 
   const binanceBalance = await fetchBalances(binance);
-  await insertBalanceToNotion(binanceBalance, "Binance");
+  const {
+    balance: updatedBinanceBalance,
+    totalUsdValue: totalUsdValueBinance,
+  } = await calculateUsdValues(binance, binanceBalance);
+  portfolioTotalUsdValue += totalUsdValueBinance;
+  await insertBalanceToNotion(updatedBinanceBalance, "Binance");
+
+  savePortfolioValueToNotion(portfolioTotalUsdValue);
 }
 
 main();
