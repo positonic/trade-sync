@@ -1,9 +1,9 @@
 import { Client } from "@notionhq/client";
 import chalk from "chalk";
 import { getKrakenFromFromPairString } from "./exchanges/Kraken";
-import { Trade } from "interfaces/Trade";
 import { Balance } from "./interfaces/Balance";
 import dotenv from "dotenv";
+import { FetchTradesReturnType } from "./exchanges/Exchange";
 // Configure dotenv to load the .env file
 dotenv.config();
 
@@ -127,7 +127,7 @@ export async function insertOrUpdateBalanceToNotion(
 }
 
 // Function to insert trades into Notion
-export async function insertTradesToNotion(trades: Record<string, Trade>) {
+export async function insertTradesToNotion(trades: FetchTradesReturnType) {
   for (const [tradeID, tradeDetail] of Object.entries(trades)) {
     // Function to query Notion database for a specific Trade ID
 
@@ -175,6 +175,7 @@ export async function insertTradesToNotion(trades: Record<string, Trade>) {
         SOL: "SOL",
         INJ: "INJ",
         USDC: "USDC",
+        BTC: "BTC",
       };
       return symbolMap[krakenSymbol];
     }
