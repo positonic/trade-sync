@@ -22,7 +22,7 @@ interface NormalizedTrade {
   misc: string;
   exchange: string;
 }
-
+// Define the interface for the Trade array
 export type FetchTradesReturnType = Record<string, NormalizedTrade>;
 
 export default class Exchange {
@@ -59,10 +59,15 @@ export default class Exchange {
   async fetchTrades(
     market: string,
     since: number | undefined = undefined,
-    limit: number = 50
+    limit: number = 20
   ): Promise<FetchTradesReturnType> {
     try {
-      const rawTrades = await this.client.fetchMyTrades(market, since, limit);
+      if (since) console.log("Call fetchTrades since ", new Date(since));
+      const rawTrades = await this.client.fetchMyTrades(
+        market,
+        since ? since * 1000 : undefined,
+        limit
+      );
       const normalizedTrades = rawTrades.map(
         (trade: CCxtTrade): [string, NormalizedTrade] => {
           const normalizedTrade: NormalizedTrade = {
@@ -91,7 +96,36 @@ export default class Exchange {
     }
   }
 
-  async fetchAllTrades(limit: number = 50): Promise<any> {
+  async fetchAllTrades(
+    market: string,
+    since: number | undefined
+  ): Promise<FetchTradesReturnType> {
+    let allTrades: FetchTradesReturnType = {};
+    // let since: number | undefined = undefined;
+    const limit: number = 100; // Adjust as needed
+
+    while (true) {
+      const trades = await this.fetchTrades(market, since, limit);
+      console.log("trades zz", { trades, since, limit });
+      Object.keys(trades).length;
+      if (Object.keys(trades).length === 0) {
+        break;
+      }
+      for (const trade of Object.values(trades)) {
+        // Assuming each trade has a unique ID and can be normalized to the NormalizedTrade structure
+        allTrades[trade.id] = trade;
+      }
+      const lastTrade: NormalizedTrade =
+        Object.values(trades)[Object.values(trades).length - 1];
+      since = lastTrade.time + 1;
+    }
+    console.log("allTrades", allTrades);
+    return allTrades;
+  }
+
+  async fetchAllMarketsTrades(
+    limit: number = 50
+  ): Promise<FetchTradesReturnType> {
     try {
       // Fetch all available markets for the exchange
       const markets = await this.client.loadMarkets();
@@ -101,13 +135,16 @@ export default class Exchange {
         this.fetchTrades(market, undefined, limit)
       );
 
+      console.log("allTradesPromises.length", allTradesPromises.length);
       const allTradesResults = await Promise.all(allTradesPromises);
 
       // Combine all trades into one structure or handle them as you see fit
-      const combinedTrades: Record<string, FetchTradesReturnType> = {}; // Add index signature
+      const combinedTrades: FetchTradesReturnType = {}; // Update the type to Record<string, FetchTradesReturnType>
 
-      allTradesResults.forEach((trades, index) => {
-        combinedTrades[marketSymbols[index]] = trades;
+      allTradesResults.forEach((trades) => {
+        for (const [id, trade] of Object.entries(trades)) {
+          combinedTrades[id] = trade; // Flatten the structure by directly assigning trades
+        }
       });
 
       return combinedTrades;

@@ -18,17 +18,29 @@ const binance = new Exchange(ccxt, binanceApiKey, binanceSecret, "binance");
 
 // Main function to execute the process
 async function main() {
-  const krakenTrades: FetchTradesReturnType = await kraken.fetchTrades(
-    "BTC/USDT"
-  );
-  const binanceTrades: FetchTradesReturnType = await binance.fetchTrades(
-    "BTC/USDT"
-  );
+  const onlyKrakan = true;
+  const since = new Date("2023-12-01T00:00:00.000Z").getTime();
 
-  const trades: FetchTradesReturnType = { ...binanceTrades, ...krakenTrades };
-  console.log(trades);
-  console.log("trades above");
+  const krakenTrades: FetchTradesReturnType = await kraken.fetchAllTrades(
+    "BTC/USD",
+    since
+  );
+  // const krakenTrades: FetchTradesReturnType = await kraken.fetchTrades(
+  //   "BTC/USD"
+  // );
+  //const krakenTrades: FetchTradesReturnType = await kraken.fetchAllTrades();
+  await insertTradesToNotion(krakenTrades);
+  if (!onlyKrakan) {
+    const binanceTrades: FetchTradesReturnType = await binance.fetchTrades(
+      "BTC/USDT"
+    );
 
-  await insertTradesToNotion(trades);
+    const trades: FetchTradesReturnType = { ...binanceTrades, ...krakenTrades };
+    console.log(trades);
+    console.log("trades above");
+    await insertTradesToNotion(trades);
+  } else {
+    await insertTradesToNotion(krakenTrades);
+  }
 }
 main();
