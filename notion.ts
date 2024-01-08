@@ -195,6 +195,7 @@ export async function insertTradesToNotion(trades: FetchTradesReturnType) {
     const tradeTitle = tradeDetail.type + " " + tradeDetail.vol + " " + from;
     const quantityIndex = tradeDetail.type === "buy" ? 1 : -1;
     const quantity = Number(tradeDetail.vol) * quantityIndex;
+
     const page = {
       parent: { database_id: tradesDatabaseId },
       properties: {
@@ -202,7 +203,7 @@ export async function insertTradesToNotion(trades: FetchTradesReturnType) {
         "Trade ID": { rich_text: [{ text: { content: tradeID } }] }, // Adjusted to rich_text
         Date: {
           date: {
-            start: new Date(tradeDetail.time * 1000).toISOString(),
+            start: new Date(tradeDetail.time).toISOString(),
             // If you have an end date, include it as well
             // end: new Date(endTime).toISOString()
           },
@@ -227,6 +228,10 @@ export async function insertTradesToNotion(trades: FetchTradesReturnType) {
         },
         Price: {
           number: price,
+        },
+        Market: {
+          // Adding the Market column
+          rich_text: [{ text: { content: tradeDetail.pair } }],
         },
         // Map other properties as needed
       },
