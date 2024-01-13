@@ -3,7 +3,7 @@ import chalk from "chalk";
 import { getKrakenFromFromPairString } from "./exchanges/Kraken";
 import { Balance } from "./interfaces/Balance";
 import dotenv from "dotenv";
-import { FetchTradesReturnType } from "./exchanges/Exchange";
+import { NormalizedTrade } from "./exchanges/Exchange";
 // Configure dotenv to load the .env file
 dotenv.config();
 
@@ -127,14 +127,15 @@ export async function insertOrUpdateBalanceToNotion(
 }
 
 // Function to insert trades into Notion
-export async function insertTradesToNotion(trades: FetchTradesReturnType) {
-  for (const [tradeID, tradeDetail] of Object.entries(trades)) {
+export async function insertTradesToNotion(trades: NormalizedTrade[]) {
+  let insertedTrades = 0;
+  //console.log(`Inserting ${trades} into Notion...`);
+  for (const tradeDetail of trades) {
     // Function to query Notion database for a specific Trade ID
-
-    const tradeExists = await checkIfTradeExists(tradeID);
+    const tradeExists = await checkIfTradeExists(tradeDetail.id);
     if (tradeExists) {
       console.warn(
-        `Trade with ID ${tradeID} already exists in Notion. Skipping.`
+        `Trade with ID ${tradeDetail.id} already exists in Notion. Skipping.`
       );
       continue;
     }
@@ -142,7 +143,7 @@ export async function insertTradesToNotion(trades: FetchTradesReturnType) {
     // Ensure the trade details have the necessary properties
     if (!tradeDetail || !tradeDetail.pair || !tradeDetail.vol) {
       console.error(
-        chalk.red(`Trade details are missing for trade ID: ${tradeID}`)
+        chalk.red(`Trade details are missing for trade ID: ${tradeDetail.id}`)
       );
       continue;
     }
@@ -176,9 +177,20 @@ export async function insertTradesToNotion(trades: FetchTradesReturnType) {
         INJ: "INJ",
         USDC: "USDC",
         BTC: "BTC",
+        ARB: "ARB",
+        TIA: "TIA",
+        BLUR: "BLUR",
       };
-      return symbolMap[krakenSymbol];
+
+      // Check if the key exists in the map
+      if (krakenSymbol in symbolMap) {
+        return symbolMap[krakenSymbol];
+      } else {
+        // If the key does not exist, return the key itself
+        return krakenSymbol;
+      }
     }
+
     let assetSymbol = translateKrakenSymbol(from);
     if (!assetSymbol) {
       assetSymbol = from;
@@ -188,7 +200,7 @@ export async function insertTradesToNotion(trades: FetchTradesReturnType) {
 
     const price = parseFloat(tradeDetail.price);
     if (isNaN(price)) {
-      console.error(chalk.red(`Invalid price for trade ID: ${tradeID}`));
+      console.error(chalk.red(`Invalid price for trade ID: ${tradeDetail.id}`));
       continue;
     }
 
@@ -200,7 +212,7 @@ export async function insertTradesToNotion(trades: FetchTradesReturnType) {
       parent: { database_id: tradesDatabaseId },
       properties: {
         Title: { title: [{ text: { content: tradeTitle } }] },
-        "Trade ID": { rich_text: [{ text: { content: tradeID } }] }, // Adjusted to rich_text
+        "Trade ID": { rich_text: [{ text: { content: tradeDetail.id } }] }, // Adjusted to rich_text
         Date: {
           date: {
             start: new Date(tradeDetail.time).toISOString(),
@@ -239,14 +251,16 @@ export async function insertTradesToNotion(trades: FetchTradesReturnType) {
 
     try {
       await notion.pages.create(page);
+      insertedTrades++;
     } catch (error) {
       console.error(
-        chalk.red(`Error inserting trade ${tradeID} into Notion:`),
+        chalk.red(`Error inserting trade ${tradeDetail.id} into Notion:`),
         error
       );
     }
     // process.exit()
   }
+  console.log(`Inserted ${insertedTrades} trades into Notion.`);
 }
 export async function savePortfolioValueToNotion(value: number) {
   const currentDate = new Date().toISOString();
