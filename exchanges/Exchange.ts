@@ -47,6 +47,8 @@ export interface Position {
   sellCost: number; // Total cost of sell orders
   profitLoss: number; // Profit or loss from the position
   orders: AggregatedOrder[]; // Array of orders that make up the position
+  pair: string;
+  price: number;
 }
 export function aggregateTrades(trades: NormalizedTrade[]): AggregatedOrder[] {
   const ordersMap: { [ordertxid: string]: AggregatedOrder } = {};
@@ -88,47 +90,77 @@ export function aggregateTrades(trades: NormalizedTrade[]): AggregatedOrder[] {
   return Object.values(ordersMap);
 }
 export function aggregatePositions(orders: AggregatedOrder[]): Position[] {
-  const positions: Position[] = [];
-
+  // Group orders by pair
+  const ordersByPair: { [pair: string]: AggregatedOrder[] } = {};
   orders.forEach((order) => {
-    const positionIndex = positions.findIndex(
-      (pos) => pos.time === order.trades[0].time
-    );
-
-    if (positionIndex === -1) {
-      // Determine the position type based on the type of the first trade
-      const positionType: "long" | "short" =
-        order.type === "buy" ? "long" : "short";
-
-      // Create a new position
-      const newPosition: Position = {
-        time: order.trades[0].time,
-        date: new Date(order.trades[0].time),
-        positionType, // Set the position type
-        buyCost: order.type === "buy" ? parseFloat(order.trades[0].cost) : 0,
-        sellCost: order.type === "sell" ? parseFloat(order.trades[0].cost) : 0,
-        profitLoss: 0,
-        orders: [order],
-      };
-      positions.push(newPosition);
-    } else {
-      // Update an existing position
-      const position = positions[positionIndex];
-      if (order.type === "buy") {
-        position.buyCost += parseFloat(order.trades[0].cost);
-      } else {
-        position.sellCost += parseFloat(order.trades[0].cost);
-      }
-      position.orders.push(order);
+    if (!ordersByPair[order.pair]) {
+      ordersByPair[order.pair] = [];
     }
+    ordersByPair[order.pair].push(order);
   });
 
-  // Calculate profit/loss for each position
-  positions.forEach((position) => {
-    position.profitLoss = position.buyCost - position.sellCost;
-    if (position.positionType === "short") {
-      position.profitLoss *= -1; // For short positions, reverse the profit/loss calculation
-    }
+  const positions: Position[] = [];
+
+  // Process each pair
+  Object.keys(ordersByPair).forEach((pair) => {
+    console.log("pair", pair);
+    let buyVolume = 0,
+      sellVolume = 0;
+    let buyCost = 0,
+      sellCost = 0;
+    let tempOrders: AggregatedOrder[] = [];
+
+    ordersByPair[pair].forEach((order) => {
+      console.log("ordersByPair pair", pair);
+      // Accumulate volumes and costs
+      if (order.type === "buy") {
+        buyVolume += order.totalVol;
+        buyCost += order.totalVol * order.averagePrice;
+      } else {
+        sellVolume += order.totalVol;
+        sellCost += order.totalVol * order.averagePrice;
+      }
+
+      tempOrders.push(order);
+      console.log("tempOrders", tempOrders);
+      const VOLUME_THRESHOLD_PERCENT = 2;
+      function isVolumeDifferenceWithinThreshold(
+        buyVolume: number,
+        sellVolume: number
+      ) {
+        return (
+          (Math.abs(buyVolume - sellVolume) / ((buyVolume + sellVolume) / 2)) *
+            100 <=
+          VOLUME_THRESHOLD_PERCENT
+        );
+      }
+      // Check if buy and sell volumes match
+      if (isVolumeDifferenceWithinThreshold(buyVolume, sellVolume)) {
+        // Create a position when buy and sell volumes are equal
+        const positionType: "long" | "short" =
+          buyVolume > sellVolume ? "long" : "short";
+        const profitLoss =
+          positionType === "long" ? sellCost - buyCost : buyCost - sellCost;
+        positions.push({
+          time: tempOrders[0].trades[0].time,
+          date: new Date(tempOrders[0].trades[0].time),
+          price: Number(tempOrders[0].trades[0].price),
+          positionType,
+          buyCost,
+          sellCost,
+          profitLoss,
+          orders: tempOrders.slice(),
+          pair: tempOrders[0].pair,
+        });
+
+        // Reset for the next set of matching orders
+        buyVolume = 0;
+        sellVolume = 0;
+        buyCost = 0;
+        sellCost = 0;
+        tempOrders = [];
+      }
+    });
   });
 
   return positions;
@@ -168,7 +200,7 @@ export default class Exchange {
   async fetchTrades(
     market: string,
     since: number | undefined = undefined,
-    limit: number = 20
+    limit: number = 1000
   ): Promise<FetchTradesReturnType> {
     try {
       if (since) console.log("Call fetchTrades since ", new Date(since));
