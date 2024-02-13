@@ -7,37 +7,58 @@ export async function calculateUsdValues(
 ): Promise<{
   balance: Balance;
   totalUsdValue: number;
-  exchangeMarket: string;
 }> {
   const markets = await exchange.instance.loadMarkets();
-  let exchangeMarket = "";
   let totalUsdValue = 0; // Initialize total USD value
 
   balance.usdValue = {}; // Initialize usdValue
 
   for (const [currency, totalAmount] of Object.entries(balance.total)) {
+    //console.log(`currency is ${currency}`);
+
     if (currency === "USD" || currency === "USDT" || currency === "USDC") {
-      totalUsdValue += totalAmount;
+      // totalUsdValue += totalAmount;
+      balance.usdValue[currency] = totalAmount;
       continue;
     }
 
     if (totalAmount <= 0) continue;
 
-    const marketSymbol = `${currency}/USD`;
-    exchangeMarket = `${exchange.name}-${currency}`;
-    const marketExists = marketSymbol in markets;
+    const usdMarketSymbol = `${currency}/USD`;
+    const usdtMarketSymbol = `${currency}/USDT`;
+
+    const usdMarketExists = usdMarketSymbol in markets;
+    const usdtMarketExists = usdtMarketSymbol in markets;
+
+    //console.log("markets are:", markets);
+    const marketExists = usdMarketExists
+      ? usdMarketExists
+      : usdtMarketExists
+      ? usdtMarketExists
+      : false;
+    const marketSymbol = usdMarketExists
+      ? usdMarketSymbol
+      : usdtMarketExists
+      ? usdtMarketSymbol
+      : "";
+    //if (marketSymbol !== "BEAM/USDT") continue;
+    // console.log("marketSymbol", marketSymbol);
+    // console.log(`Market exists: ${marketExists}`);
+    // console.log(`Market usdtMarketExists exists: ${usdtMarketExists}`);
 
     if (marketExists) {
       try {
         const ticker = await exchange.instance.fetchTicker(marketSymbol);
         const currencyValue = totalAmount * ticker.last; // Calculate USD value
-        balance.usdValue[currency] = currencyValue; // Assign USD value
-        totalUsdValue += currencyValue; // Add to total
+        if (currencyValue > 3) {
+          balance.usdValue[currency] = currencyValue; // Assign USD value
+          totalUsdValue += currencyValue; // Add to total
+        }
       } catch (error) {
         console.error(`Error fetching ticker for ${marketSymbol}:`, error);
       }
     }
   }
 
-  return { balance, totalUsdValue, exchangeMarket }; // Return the modified balance and total USD value
+  return { balance, totalUsdValue }; // Return the modified balance and total USD value
 }

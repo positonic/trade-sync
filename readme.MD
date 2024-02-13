@@ -42,6 +42,9 @@ BYBIT_API_SECRET=(Exchange view only api keys)
 
 Run `balances.ts` or `trades.ts` locally using ts-node, or `tsc`, then `node dist/balance.ts` etc
 
+To import trades run:
+`ts-node trades --exchange binance` in the console.
+
 Execute the script to see the balances and total portfolio value in the notion databases
 
 ## Automate saving balances by scheduling with GitHub Actions:

@@ -11,9 +11,9 @@ import Exchange from "interfaces/Exchange";
 dotenv.config();
 
 // Function to fetch and display balances from an exchange
-async function fetchBalances(exchange: any) {
+async function fetchBalances(exchange: any, config: any) {
   try {
-    const balance = await exchange.fetchBalance();
+    const balance = await exchange.fetchBalance(config);
     return balance;
   } catch (error) {
     console.error(exchange.id, "an error occurred:", error);
@@ -39,9 +39,9 @@ async function main() {
 
   // Define an array of exchanges with their respective names and instances
   const exchanges: Exchange[] = [
-    { name: "Kraken", instance: kraken },
-    { name: "Bybit", instance: bybit },
-    { name: "Binance", instance: binance },
+    { name: "Kraken", instance: kraken, fetchConfig: {} },
+    { name: "Bybit", instance: bybit, fetchConfig: { type: "spot" } },
+    { name: "Binance", instance: binance, fetchConfig: {} },
   ];
 
   let portfolioTotalUsdValue = 0;
@@ -49,29 +49,32 @@ async function main() {
   for (const exchange of exchanges) {
     try {
       // Fetch balances for each exchange
-      const balance = await fetchBalances(exchange.instance);
-
+      const balance = await fetchBalances(
+        exchange.instance,
+        exchange.fetchConfig
+      );
+      //console.log("balance", balance);
       // Calculate USD values for the fetched balances
-      const {
-        balance: updatedBalance,
-        totalUsdValue,
-        exchangeMarket,
-      } = await calculateUsdValues(exchange, balance);
+      const { balance: updatedBalance, totalUsdValue } =
+        await calculateUsdValues(exchange, balance);
 
       // Accumulate the total USD value from all exchanges
       portfolioTotalUsdValue += totalUsdValue;
 
-      // Insert the updated balance and total USD value into Notion
-      await insertOrUpdateBalanceToNotion(
-        updatedBalance,
-        exchange.name,
-        exchangeMarket
+      console.log(
+        "updatedBalance.usdValue: ",
+        "For: " + exchange.name,
+        updatedBalance.usdValue
       );
+      //Insert the updated balance and total USD value into Notion
+      await insertOrUpdateBalanceToNotion(updatedBalance, exchange.name);
 
       // Log a success message
       console.log(
         `${exchange.name} exchange processed successfully. Total USD Value: ${totalUsdValue}`
       );
+      console.log(" ");
+      console.log("________________\n\n");
     } catch (error) {
       // Log the error for the specific exchange
       console.error(`Error processing ${exchange.name} exchange:`, error);

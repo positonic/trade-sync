@@ -36,6 +36,8 @@ export function parseKrakenPair(pair: string): CurrencyPair | null {
     "INJ",
     "BTC",
     "USDT",
+    "OP",
+    "LINK",
   ];
 
   if (pair.includes("/")) {

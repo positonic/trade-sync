@@ -3,13 +3,25 @@ import chalk from "chalk";
 import { getKrakenFromFromPairString } from "./exchanges/Kraken";
 import { Balance } from "./interfaces/Balance";
 import dotenv from "dotenv";
-import { NormalizedTrade } from "./exchanges/Exchange";
+import { NormalizedTrade, Position } from "./exchanges/Exchange";
+
+const NOTION_KRAKEN_PAGE_ID = "096d3430c8b44b1899978367a3e89b0f";
+const NOTION_BINANCE_PAGE_ID = "c3695a15f2134308b6f5debe3576a85a";
+const NOTION_BYBIT_PAGE_ID = "05f5363c6b494f7b8b5d1f9650024016";
+//type Exchange = "kraken" | "binance" | "bybit";
+const exchangePages: any = {
+  Kraken: NOTION_KRAKEN_PAGE_ID,
+  Binance: NOTION_BINANCE_PAGE_ID,
+  Bybit: NOTION_BYBIT_PAGE_ID,
+};
+
 // Configure dotenv to load the .env file
 dotenv.config();
 
 // Notion API details
 const notionToken = process.env.NOTION_TOKEN as string;
 const tradesDatabaseId = process.env.NOTION_TRADES_DATABASE_ID as string;
+const positionsDatabaseId = process.env.NOTION_POSITIONS_DATABASE_ID as string;
 const balancesDatabaseId = process.env.NOTION_BALANCES_DATABASE_ID as string;
 const portfolioValueDatabaseId = process.env
   .NOTION_PORTFOLIO_VALUE_DATABASE_ID as string;
@@ -17,21 +29,25 @@ const portfolioValueDatabaseId = process.env
 // Initialize Notion client
 const notion = new Client({ auth: notionToken });
 
-async function checkIfTradeExists(tradeID: string): Promise<boolean> {
+async function checkIfItemExists(
+  databaseId: string,
+  columnName: string,
+  value: string
+): Promise<boolean> {
   try {
     const response = await notion.databases.query({
-      database_id: tradesDatabaseId,
+      database_id: databaseId,
       filter: {
-        property: "Trade ID",
+        property: columnName,
         title: {
-          equals: tradeID,
+          equals: value,
         },
       },
     });
     return response.results.length > 0;
   } catch (error) {
     console.error(
-      chalk.red(`Error querying Notion database for trade ID ${tradeID}:`),
+      chalk.red(`Error querying Notion database for ${columnName} ${value}:`),
       error
     );
     return false;
@@ -51,19 +67,65 @@ async function checkIfBalanceExists(exchangeMarket: string) {
 
   return response.results.length > 0 ? response.results[0] : null;
 }
+
+function getFrom(exchange: string, pair: string) {
+  let from = "";
+  if (exchange.toLowerCase() === "kraken") {
+    from = getKrakenFromFromPairString(pair) as string;
+    if (!from) {
+      console.error(chalk.red(`Unknown currency pair: ${pair}: in getFrom`));
+    }
+  } else if (exchange.toLowerCase() === "binance") {
+    from = pair.split("/")[0];
+  } else {
+    console.error(chalk.red(`Unknown exchange: ${exchange}`));
+    process.exit();
+  }
+  return from;
+}
+
+function translateKrakenSymbol(krakenSymbol: string) {
+  const symbolMap: { [key: string]: string } = {
+    XETH: "ETH",
+    ETH: "ETH",
+    XDG: "XDG",
+    XXBT: "BTC",
+    MATIC: "MATIC",
+    ZUSD: "USD",
+    ZEUR: "EUR",
+    XBT: "BTC",
+    QNT: "QNT",
+    SOL: "SOL",
+    INJ: "INJ",
+    USDC: "USDC",
+    BTC: "BTC",
+    ARB: "ARB",
+    TIA: "TIA",
+    BLUR: "BLUR",
+  };
+
+  // Check if the key exists in the map
+  if (krakenSymbol in symbolMap) {
+    return symbolMap[krakenSymbol];
+  } else {
+    // If the key does not exist, return the key itself
+    return krakenSymbol;
+  }
+}
 // Define a function to insert data into Notion database
 export async function insertOrUpdateBalanceToNotion(
   balance: Balance,
-  exchange: string,
-  exchangeMarket: string
+  exchange: string
 ) {
-  const existingBalance = await checkIfBalanceExists(exchangeMarket);
-  const usdValueTime = new Date();
+  const exchangePage: string = exchangePages[exchange];
 
+  //console.log("exchangeBalance", exchange, balance);
   // Loop through each currency in the balance and create pages or update the database as necessary
   for (const [currency, data] of Object.entries(balance.total ?? {}).filter(
     ([_, value]) => value !== undefined
   )) {
+    const exchangeMarket = exchange + ":" + currency;
+    const usdValueTime = new Date();
     const free = (balance.free as unknown as { [key: string]: number })[
       currency
     ];
@@ -109,7 +171,16 @@ export async function insertOrUpdateBalanceToNotion(
             start: usdValueTime.toISOString(),
           },
         },
+        ExchangePage: {
+          relation: [
+            {
+              id: exchangePage,
+            },
+          ],
+        },
       };
+      const existingBalance = await checkIfBalanceExists(exchangeMarket);
+
       if (existingBalance) {
         // Update the existing balance
         await notion.pages.update({
@@ -128,11 +199,16 @@ export async function insertOrUpdateBalanceToNotion(
 
 // Function to insert trades into Notion
 export async function insertTradesToNotion(trades: NormalizedTrade[]) {
+  console.log(`Debug: ${trades.length} trades passed to Notion`);
   let insertedTrades = 0;
   //console.log(`Inserting ${trades} into Notion...`);
   for (const tradeDetail of trades) {
     // Function to query Notion database for a specific Trade ID
-    const tradeExists = await checkIfTradeExists(tradeDetail.id);
+    const tradeExists = await checkIfItemExists(
+      tradesDatabaseId,
+      "Trade ID",
+      tradeDetail.id
+    );
     if (tradeExists) {
       console.warn(
         `Trade with ID ${tradeDetail.id} already exists in Notion. Skipping.`
@@ -148,48 +224,7 @@ export async function insertTradesToNotion(trades: NormalizedTrade[]) {
       continue;
     }
 
-    let from = "";
-    if (tradeDetail.exchange === "Kraken") {
-      from = getKrakenFromFromPairString(tradeDetail.pair) as string;
-      if (!from) {
-        console.error(chalk.red(`Unknown currency pair: ${tradeDetail.pair}`));
-        continue;
-      }
-    } else if (tradeDetail.exchange === "Binance") {
-      from = tradeDetail.pair.split("/")[0];
-    } else {
-      console.error(chalk.red(`Unknown exchange: ${tradeDetail.exchange}`));
-      continue;
-    }
-
-    function translateKrakenSymbol(krakenSymbol: string) {
-      const symbolMap: { [key: string]: string } = {
-        XETH: "ETH",
-        ETH: "ETH",
-        XDG: "XDG",
-        XXBT: "BTC",
-        MATIC: "MATIC",
-        ZUSD: "USD",
-        ZEUR: "EUR",
-        XBT: "BTC",
-        QNT: "QNT",
-        SOL: "SOL",
-        INJ: "INJ",
-        USDC: "USDC",
-        BTC: "BTC",
-        ARB: "ARB",
-        TIA: "TIA",
-        BLUR: "BLUR",
-      };
-
-      // Check if the key exists in the map
-      if (krakenSymbol in symbolMap) {
-        return symbolMap[krakenSymbol];
-      } else {
-        // If the key does not exist, return the key itself
-        return krakenSymbol;
-      }
-    }
+    let from = getFrom(tradeDetail.exchange, tradeDetail.pair);
 
     let assetSymbol = translateKrakenSymbol(from);
     if (!assetSymbol) {
@@ -262,6 +297,123 @@ export async function insertTradesToNotion(trades: NormalizedTrade[]) {
   }
   console.log(`Inserted ${insertedTrades} trades into Notion.`);
 }
+
+// Function to insert trades into Notion
+export async function insertPositionsToNotion(positions: Position[]) {
+  console.log(`Inserting ${positions.length} positions into notion`);
+  let insertedPositions = 0;
+  //console.log(`Inserting ${trades} into Notion...`);
+  for (const position of positions) {
+    // Function to query Notion database for a specific Trade ID
+    const positionId = position.time + "-" + position.pair;
+    const tradeExists = await checkIfItemExists(
+      positionsDatabaseId,
+      "Position ID",
+      positionId
+    );
+    if (tradeExists) {
+      console.warn(
+        `Trade with ID ${positionId} already exists in Notion. Skipping.`
+      );
+      continue;
+    }
+
+    // Ensure the trade details have the necessary properties
+    if (!position || !position.pair) {
+      // || !position.vol
+      console.error(
+        chalk.red(`Trade details are missing for trade ID: ${positionId}`)
+      );
+      continue;
+    }
+
+    let from = getFrom(position.exchange, position.pair);
+
+    let assetSymbol = translateKrakenSymbol(from);
+    if (!assetSymbol) {
+      assetSymbol = from;
+      console.error(chalk.red(`Unknown assetSymbol : ${from}`));
+      //continue;
+    }
+
+    const price = position.price;
+    if (isNaN(price)) {
+      console.error(chalk.red(`Invalid price for trade ID: ${positionId}`));
+      continue;
+    }
+    const positionTitle = position.type + " " + position.quantity + " " + from;
+
+    const page = {
+      parent: { database_id: positionsDatabaseId },
+      properties: {
+        Title: { title: [{ text: { content: positionTitle } }] },
+        "Position ID": { rich_text: [{ text: { content: positionId } }] }, // Adjusted to rich_text
+        Date: {
+          date: {
+            start: new Date(position.time).toISOString(),
+            // If you have an end date, include it as well
+            // end: new Date(endTime).toISOString()
+          },
+        },
+        Type: {
+          select: { name: position.type }, // Assuming 'type' is either 'buy' or 'sell'
+        },
+        Status: {
+          select: { name: "closed" }, // Assuming 'type' is either 'buy' or 'sell'
+        },
+        PositionExchange: {
+          select: { name: position.exchange }, // Assuming 'type' is either 'buy' or 'sell'
+        },
+        Crypto: {
+          select: { name: from }, // Assuming 'type' is either 'buy' or 'sell'
+        },
+        Quantity: {
+          number: position.quantity,
+        },
+        BuyCost: {
+          number: position.buyCost,
+        },
+        SellCost: {
+          number: position.sellCost,
+        },
+        Price: {
+          number: position.price,
+        },
+        ProfitLoss: {
+          number: position.profitLoss,
+        },
+        DurationMinutes: {
+          number: position.duration,
+        },
+        Exchange: {
+          select: {
+            name:
+              position.exchange.charAt(0).toUpperCase() +
+              position.exchange.slice(1),
+          },
+        },
+        // Market: {
+        //   // Adding the Market column
+        //   rich_text: [{ text: { content: tradeDetail.pair } }],
+        // },
+        // Map other properties as needed
+      },
+    };
+
+    try {
+      await notion.pages.create(page);
+      insertedPositions++;
+    } catch (error) {
+      console.error(
+        chalk.red(`Error inserting trade ${positionId} into Notion:`),
+        error
+      );
+    }
+    // process.exit()
+  }
+  console.log(`Inserted ${insertedPositions} positions into Notion.`);
+}
+
 export async function savePortfolioValueToNotion(value: number) {
   const currentDate = new Date().toISOString();
 

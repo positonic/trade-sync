@@ -1,11 +1,15 @@
 import dotenv from "dotenv";
-import { insertTradesToNotion } from "./notion";
+import { insertTradesToNotion, insertPositionsToNotion } from "./notion";
 import Exchange, {
   FetchTradesReturnType,
   aggregatePositions,
   aggregateTrades,
 } from "./exchanges/Exchange";
 import ccxt from "ccxt";
+import minimist from "minimist";
+
+const argv = minimist(process.argv.slice(2));
+const exchange = argv.exchange;
 
 dotenv.config();
 
@@ -29,9 +33,16 @@ const apiKeys: ApiKeys = {
     apiSecret: process.env.BINANCE_API_SECRET as string,
   },
 };
+let doGetTrades = false;
+let doGetPositions = false;
+let config: ExchangeConfig[] = [];
+
+//const getPositionsFor = "kraken"; // "binance" | "kraken"
+
 interface ExchangeConfig {
   exchange: string;
   pairs: string[];
+  since?: number;
 }
 // Exchange names
 //const exchangeNames = ["binance", "kraken"];
@@ -43,13 +54,53 @@ interface ExchangeConfig {
 //   },
 //   { exchange: "kraken", pairs: ["TIA/USDT", "ETH/USD"] },
 // ];
-const config: ExchangeConfig[] = [
+const krakenConfig: ExchangeConfig[] = [
   {
-    exchange: "binance",
-    pairs: ["ENS/USDT"],
+    exchange: "kraken",
+    pairs: ["OP/USD", "LINK/USD"],
   },
 ];
-const insertTradesInNotion = false;
+const binancePairs = [
+  "ETH/USDT",
+  "ETH/USD",
+  "ARB/USDT",
+  "SUI/USDT",
+  "BTC/USDT",
+  "ETH/USDT",
+  "MATIC/USDT",
+  "ENS/USDT",
+  "TIA/USDT",
+  "OP/USDT",
+  "OP/USD",
+  "BLUR/USDT",
+  "LINK/USDT",
+  "LINK/USD",
+  "ARB/USDT",
+  "PENDLE/USDT",
+];
+//const june1st2021 = 1622505600000;
+const today = new Date().getTime();
+
+const binanceConfig: ExchangeConfig[] = [
+  {
+    exchange: "binance",
+    pairs: binancePairs,
+    since: today,
+  },
+];
+let getPositionsFor: string = process.env.exchange as string;
+getPositionsFor = getPositionsFor ? getPositionsFor : exchange;
+
+if (getPositionsFor === "binance") {
+  console.log("Getting positions for binance");
+  config = binanceConfig;
+} else if (getPositionsFor === "kraken") {
+  console.log("Getting positions for kraken");
+  config = krakenConfig;
+}
+
+const insertTradesInNotion = true;
+const insertPositionsInNotion = false;
 // Initialize exchanges
 interface ApiKeys {
   [key: string]: ApiKey;
@@ -64,7 +115,7 @@ const exchanges = Object.keys(apiKeys).reduce((acc, name) => {
   );
   return acc;
 }, {} as Record<string, Exchange>);
-async function main() {
+async function getTrades() {
   let allTrades: any = [];
 
   for (const { exchange: exchangeName, pairs } of config) {
@@ -101,6 +152,58 @@ async function main() {
   if (insertTradesInNotion) {
     await insertTradesToNotion(allTrades);
   }
+  if (insertPositionsInNotion) {
+    await insertPositionsToNotion(positions);
+  }
 }
 
-main();
+async function getAndSavePositions() {
+  let allPositions: any = [];
+
+  for (const { exchange: exchangeName, pairs } of config) {
+    const exchange = exchanges[exchangeName];
+    if (!exchange) continue; // Skip if the exchange is not initialized
+
+    for (const pair of pairs) {
+      try {
+        const positions: FetchTradesReturnType = await exchange.fetchPositions(
+          pair,
+          exchangeName
+        );
+
+        console.log(
+          `${exchangeName} - ${pair}: Built ${positions.length} positions`
+        );
+        allPositions = allPositions.concat(positions);
+      } catch (error) {
+        console.error(
+          `Error fetching trades from ${exchangeName} for ${pair}:`,
+          error
+        );
+      }
+    }
+  }
+
+  console.log(allPositions);
+  console.log(`Built ${allPositions.length} allPositions in total`);
+
+  // if (insertTradesInNotion) {
+  //   await insertTradesToNotion(allTrades);
+  // }
+  if (insertPositionsInNotion) {
+    await insertPositionsToNotion(allPositions);
+  }
+}
+
+//fetchOrders not supported by Kraken
+if (getPositionsFor === "binance") {
+  doGetPositions = true;
+  doGetTrades = true; //Can I do this?
+} else if (getPositionsFor === "kraken") {
+  doGetTrades = true;
+}
+
+if (doGetTrades) {
+  getTrades();
+}
+if (doGetPositions) getAndSavePositions();
