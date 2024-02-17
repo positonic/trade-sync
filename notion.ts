@@ -436,3 +436,26 @@ export async function savePortfolioValueToNotion(value: number) {
     },
   });
 }
+
+export async function getLastTradeTimestamp(): Promise<number> {
+  const response = await notion.databases.query({
+    database_id: tradesDatabaseId,
+    sorts: [
+      {
+        property: "Date",
+        direction: "descending",
+      },
+    ],
+    page_size: 1,
+  });
+
+  if (response.results.length > 0) {
+    const lastTrade = response.results[0] as any; // Using 'any' for simplicity
+
+    // Assuming 'Date' is the property name of the timestamp in your Notion database
+    const timestamp = new Date(lastTrade.properties.Date.date.start).getTime();
+    return timestamp;
+  }
+
+  return 0; // Default to epoch start if no trades are found
+}

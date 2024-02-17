@@ -1,5 +1,9 @@
 import dotenv from "dotenv";
-import { insertTradesToNotion, insertPositionsToNotion } from "./notion";
+import {
+  insertTradesToNotion,
+  insertPositionsToNotion,
+  getLastTradeTimestamp,
+} from "./notion";
 import Exchange, {
   FetchTradesReturnType,
   aggregatePositions,
@@ -116,6 +120,10 @@ const exchanges = Object.keys(apiKeys).reduce((acc, name) => {
   return acc;
 }, {} as Record<string, Exchange>);
 async function getTrades() {
+  const lastTimestamp = await getLastTradeTimestamp();
+  console.log("lastTimestamp is:", lastTimestamp);
+  const since = lastTimestamp ? lastTimestamp + 1 : undefined; // Fetch trades after the last recorded trade
+
   let allTrades: any = [];
 
   for (const { exchange: exchangeName, pairs } of config) {
@@ -125,7 +133,7 @@ async function getTrades() {
     for (const pair of pairs) {
       try {
         const exchangeTrades: FetchTradesReturnType =
-          await exchange.fetchTrades(pair);
+          await exchange.fetchTrades(pair, since);
         const trades = Object.values(exchangeTrades);
         console.log(`${exchangeName} - ${pair}: Found ${trades.length} trades`);
         allTrades = allTrades.concat(trades);
