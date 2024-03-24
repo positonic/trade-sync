@@ -61,7 +61,7 @@ interface ExchangeConfig {
 const krakenConfig: ExchangeConfig[] = [
   {
     exchange: "kraken",
-    pairs: ["OP/USD", "LINK/USD"],
+    pairs: ["SOL/USD", "ETH/USD"],
   },
 ];
 const binancePairs = [
@@ -119,10 +119,9 @@ const exchanges = Object.keys(apiKeys).reduce((acc, name) => {
   );
   return acc;
 }, {} as Record<string, Exchange>);
-async function getTrades() {
-  const lastTimestamp = await getLastTradeTimestamp();
+async function getTrades(lastTimestamp: number) {
   console.log("lastTimestamp is:", lastTimestamp);
-  const since = lastTimestamp ? lastTimestamp + 1 : undefined; // Fetch trades after the last recorded trade
+  const since = lastTimestamp ? lastTimestamp : undefined; // Fetch trades after the last recorded trade
 
   let allTrades: any = [];
 
@@ -205,13 +204,15 @@ async function getAndSavePositions() {
 
 //fetchOrders not supported by Kraken
 if (getPositionsFor === "binance") {
-  doGetPositions = true;
+  doGetPositions = false;
   doGetTrades = true; //Can I do this?
 } else if (getPositionsFor === "kraken") {
   doGetTrades = true;
 }
 
 if (doGetTrades) {
-  getTrades();
+  getLastTradeTimestamp().then((lastTimestamp) => {
+    getTrades(lastTimestamp + 1);
+  });
 }
 if (doGetPositions) getAndSavePositions();

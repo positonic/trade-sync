@@ -158,7 +158,7 @@ export async function insertOrUpdateBalanceToNotion(
           select: { name: exchange }, // Assuming 'type' is either 'buy' or 'sell'
         },
         Coin: {
-          rich_text: [{ text: { content: currency } }], // Assuming 'type' is either 'buy' or 'sell'
+          select: { name: currency },
         },
         USDValue: {
           number: usdValue,
@@ -273,7 +273,7 @@ export async function insertTradesToNotion(trades: NormalizedTrade[]) {
         Cost: {
           number: Number(tradeDetail.cost),
         },
-        Price: {
+        "Price $": {
           number: price,
         },
         Market: {
